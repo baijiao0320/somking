@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>控烟监测数据平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        :root {
+            --bg: #f4f2ed;
+            --card-bg: #ffffff;
+            --primary: #8b9d83;
+            --primary-hover: #7a8e72;
+            --pm1-color: #d4a373;
+            --pm25-color: #7b9cb5;
+            --trigger-color: #c4876e;
+            --text: #4a4947;
+            --text-light: #8a8985;
+            --border: #e8e4db;
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+            --radius: 14px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                "Microsoft YaHei", "Helvetica Neue", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* ========== Header ========== */
+        .header {
+            text-align: center;
+            padding: 36px 20px 24px;
+        }
+        .header h1 {
+            font-size: 64px;
+            font-weight: 600;
+            color: #3d3d3b;
+            letter-spacing: 4px;
+        }
+        .header .subtitle {
+            font-size: 16px;
+            color: var(--text-light);
+            margin-top: 10px;
+            letter-spacing: 3px;
+        }
+
+        /* ========== Container ========== */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px 40px;
+        }
+
+        /* ========== Layer ========== */
+        .layer {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 22px 18px;
+            margin-bottom: 16px;
+        }
+        .layer-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 16px;
+            padding-left: 10px;
+            border-left: 3px solid var(--primary);
+        }
+
+        /* ========== Layer 1: 地点选择 ========== */
+        .location-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .location-tab {
+            padding: 8px 22px;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            background: #fafaf7;
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            user-select: none;
+        }
+        .location-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary-hover);
+            background: #f7f9f5;
+        }
+        .location-tab.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        /* ========== Layer 2: 当日PM曲线 ========== */
+        .chart-box {
+            width: 100%;
+            height: 380px;
+        }
+
+        /* ========== Layer 3: 信息卡 ========== */
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .info-card {
+            text-align: center;
+            padding: 22px 16px;
+            border-radius: var(--radius);
+            background: linear-gradient(135deg, #f7f8f4 0%, #f3f5ef 100%);
+            border: 1px solid #e2e6da;
+        }
+        .info-card .label {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+        .info-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #3d3d3b;
+        }
+        .info-card .unit {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: 400;
+        }
+
+        /* ========== Layer 4: 七日曲线 ========== */
+        .week-charts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .week-chart-item {
+            flex: 1 1 420px;
+            min-width: 0;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 22px 18px;
+        }
+        .week-chart-item .chart-box {
+            height: 320px;
+        }
+
+        /* ========== Loading ========== */
+        .loading-spinner {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ========== Responsive ========== */
+        @media (max-width: 768px) {
+            .info-cards {
+                grid-template-columns: 1fr;
+            }
+            .header h1 { font-size: 30px; }
+            .chart-box { height: 280px; }
+            .week-chart-item {
+                flex: 1 1 100%;
+                padding: 16px 12px;
+            }
+            .week-chart-item .chart-box { height: 280px; }
+            .location-tab { padding: 6px 16px; font-size: 13px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== Header ===== -->
+    <div class="header">
+        <h1>控烟监测数据平台</h1>
+        <p class="subtitle">实时监测 · 数据可视化</p>
+    </div>
+
+    <!-- ===== Container ===== -->
+    <div class="container">
+
+        <!-- 第一层：地点选择 -->
+        <div class="layer" id="layer1">
+            <div class="layer-title">监测地点</div>
+            <div class="location-tabs" id="locationTabs">
+                <!-- JS 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 第二层：当日 PM1.0 / PM2.5 波动曲线 -->
+        <div class="layer" id="layer2">
+            <div class="layer-title">当日 PM 波动曲线</div>
+            <div class="chart-box" id="chartTodayPM"></div>
+        </div>
+
+        <!-- 第三层：信息卡 -->
+        <div class="layer" id="layer3">
+            <div class="layer-title">当日统计</div>
+            <div class="info-cards" id="infoCards">
+                <div class="info-card">
+                    <div class="label">触发次数</div>
+                    <div class="value" id="valTrigger">--</div>
+                    <div class="unit">次</div>
+                </div>
+                <div class="info-card">
+                    <div class="label">人次</div>
+                    <div class="value" id="valPerson">--</div>
+                    <div class="unit">人次</div>
+                </div>
+                <div class="info-card">
+                    <div class="label">每百人触发次数</div>
+                    <div class="value" id="valPer100">--</div>
+                    <div class="unit">次/百人</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第四层：七日日均波动 & 七日每百人触发次数波动 -->
+        <div class="week-charts" id="layer4">
+            <div class="week-chart-item">
+                <div class="layer-title">七日日均 PM 波动</div>
+                <div class="chart-box" id="chartWeekPM"></div>
+            </div>
+            <div class="week-chart-item">
+                <div class="layer-title">七日每百人触发次数波动</div>
+                <div class="chart-box" id="chartWeekTrigger"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
